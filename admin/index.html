@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>문의함 — 관리자</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+  :root{--orange:#FF4D00;--black:#000;--white:#fff;--grey:#6b6b6b;--line:#d9d9d9}
+  [hidden]{display:none!important}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--white);color:var(--black);font-family:'Pretendard Variable',-apple-system,'Malgun Gothic',sans-serif;font-size:16px;line-height:1.5;word-break:keep-all}
+  button,input{font:inherit}
+  :focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+  header{background:var(--black);color:var(--white);padding:16px;display:flex;justify-content:space-between;align-items:center}
+  header h1{font-size:18px;font-weight:800}
+  header button{background:none;border:1px solid #fff;color:#fff;border-radius:999px;padding:6px 14px;font-size:14px}
+  main{max-width:720px;margin:0 auto;padding:20px 16px 48px}
+  .login{display:flex;flex-direction:column;gap:12px;margin-top:40px}
+  .login label{font-weight:700}
+  .login input{height:52px;padding:0 14px;border:2px solid var(--black);font-size:17px}
+  .btn{min-height:52px;border:2px solid var(--black);background:var(--black);color:var(--white);font-weight:700;border-radius:999px;cursor:pointer}
+  .err{color:#c62800;font-weight:700;min-height:1.5em}
+  .summary{display:flex;align-items:baseline;gap:10px;border-bottom:2px solid var(--black);padding-bottom:14px}
+  .summary b{font-size:56px;line-height:1;font-weight:900;color:var(--orange)}
+  .summary span{font-weight:700}
+  .summary small{margin-left:auto;color:var(--grey)}
+  .filters{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0}
+  .filters button{border:1px solid var(--black);background:var(--white);border-radius:999px;padding:6px 14px;font-size:15px;cursor:pointer}
+  .filters button[aria-pressed=true]{background:var(--black);color:var(--white)}
+  .list{list-style:none;display:flex;flex-direction:column;gap:12px}
+  .card{border:2px solid var(--black);padding:16px}
+  .card.new{border-color:var(--orange)}
+  .card-top{display:flex;justify-content:space-between;gap:8px;color:var(--grey);font-size:14px}
+  .card h2{font-size:20px;font-weight:800;margin-top:4px}
+  .store{margin-top:2px}
+  .contact{margin-top:8px;background:#f3f3f3;border:none;padding:8px 12px;font-weight:700;font-size:17px;cursor:pointer;text-align:left;width:100%}
+  .status{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+  .status button{min-height:44px;border:1px solid var(--black);background:var(--white);font-weight:700;cursor:pointer}
+  .status button[aria-pressed=true]{background:var(--black);color:var(--white)}
+  .status button[aria-pressed=true][data-s="새 문의"]{background:var(--orange);color:var(--black);border-color:var(--orange)}
+  .empty{padding:40px 0;text-align:center;color:var(--grey)}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--black);color:var(--white);padding:10px 18px;border-radius:999px;font-weight:700}
+</style>
+</head>
+<body>
+<header><h1>문의함</h1><button id="logout" hidden>나가기</button></header>
+<main>
+  <form class="login" id="login">
+    <label for="pw">관리자 비밀번호</label>
+    <input id="pw" type="password" autocomplete="current-password" required>
+    <button class="btn" type="submit">들어가기</button>
+    <p class="err" id="login-err" role="alert"></p>
+  </form>
+
+  <section id="box" hidden>
+    <div class="summary"><b id="new-count">0</b><span>건의 새 문의</span><small id="total"></small></div>
+    <div class="filters" role="group" aria-label="상태별 보기">
+      <button data-f="all" aria-pressed="true">전체</button>
+      <button data-f="새 문의" aria-pressed="false">새 문의</button>
+      <button data-f="연락함" aria-pressed="false">연락함</button>
+      <button data-f="완료" aria-pressed="false">완료</button>
+    </div>
+    <p class="err" id="box-err" role="alert"></p>
+    <ul class="list" id="list"></ul>
+  </section>
+</main>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(() => {
+  const KEY = 'admin-pw';
+  const $ = (id) => document.getElementById(id);
+  const STATUSES = ['새 문의', '연락함', '완료'];
+  let rows = [], filter = 'all';
+
+  const toast = (t) => { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 1800); };
+  const fmt = (s) => { const d = new Date(s); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+
+  async function api(method, body) {
+    const r = await fetch('/api/admin', {
+      method, headers: { 'x-admin-password': sessionStorage.getItem(KEY) || '', ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 401) { logout('비밀번호가 맞지 않아요.'); throw new Error('401'); }
+    if (!r.ok) throw new Error(j.error || '불러오지 못했어요.');
+    return j;
+  }
+
+  function render() {
+    const list = $('list');
+    list.textContent = '';
+    $('new-count').textContent = rows.filter((r) => r.status === '새 문의').length;
+    $('total').textContent = `전체 ${rows.length}건`;
+    const shown = filter === 'all' ? rows : rows.filter((r) => r.status === filter);
+    if (!shown.length) { const li = document.createElement('li'); li.className = 'empty'; li.textContent = rows.length ? '이 상태의 문의가 없어요.' : '아직 들어온 문의가 없어요. 사이트 문의 폼으로 들어오면 여기에 보여요.'; list.append(li); return; }
+    for (const r of shown) {
+      const li = document.createElement('li');
+      li.className = 'card' + (r.status === '새 문의' ? ' new' : '');
+      const top = document.createElement('div'); top.className = 'card-top';
+      top.append(Object.assign(document.createElement('span'), { textContent: fmt(r.created_at) }), Object.assign(document.createElement('span'), { textContent: r.status }));
+      const h = Object.assign(document.createElement('h2'), { textContent: r.name });
+      const store = Object.assign(document.createElement('p'), { className: 'store', textContent: r.store || '가게 정보 없음' });
+      const c = Object.assign(document.createElement('button'), { className: 'contact', type: 'button', textContent: r.contact, title: '눌러서 복사' });
+      c.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(r.contact); toast('연락처를 복사했어요'); }
+        catch { const rg = document.createRange(); rg.selectNodeContents(c); const s = getSelection(); s.removeAllRanges(); s.addRange(rg); }
+      });
+      const st = document.createElement('div'); st.className = 'status';
+      for (const s of STATUSES) {
+        const b = Object.assign(document.createElement('button'), { type: 'button', textContent: s });
+        b.dataset.s = s; b.setAttribute('aria-pressed', String(r.status === s));
+        b.addEventListener('click', async () => {
+          if (r.status === s) return;
+          try { await api('PATCH', { id: r.id, status: s }); toast(`'${s}'(으)로 바꿨어요`); await load(); }
+          catch (e) { if (e.message !== '401') $('box-err').textContent = e.message; }
+        });
+        st.append(b);
+      }
+      li.append(top, h, store, c, st);
+      list.append(li);
+    }
+  }
+
+  async function load() {
+    $('box-err').textContent = '';
+    const j = await api('GET');
+    rows = j.rows || [];
+    render();
+  }
+
+  function logout(msg) {
+    sessionStorage.removeItem(KEY);
+    $('box').hidden = true; $('logout').hidden = true; $('login').hidden = false;
+    $('pw').value = ''; $('login-err').textContent = msg || ''; $('pw').focus();
+  }
+
+  $('login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    sessionStorage.setItem(KEY, $('pw').value);
+    try { await load(); $('login').hidden = true; $('box').hidden = false; $('logout').hidden = false; $('login-err').textContent = ''; }
+    catch (err) { if (err.message !== '401') { $('login-err').textContent = err.message; sessionStorage.removeItem(KEY); } }
+  });
+  $('logout').addEventListener('click', () => logout(''));
+  document.querySelectorAll('.filters button').forEach((b) => b.addEventListener('click', () => {
+    filter = b.dataset.f;
+    document.querySelectorAll('.filters button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    render();
+  }));
+
+  if (sessionStorage.getItem(KEY)) {
+    load().then(() => { $('login').hidden = true; $('box').hidden = false; $('logout').hidden = false; }).catch(() => {});
+  } else { $('pw').focus(); }
+})();
+</script>
+</body>
+</html>
