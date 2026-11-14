@@ -78,6 +78,10 @@
 - 문의 저장: 예 → Supabase(leaderpl-admin 스킬) + /admin
 - 회원가입: 이번엔 아니요
 - 배포: GitHub 공개 저장소 + Vercel
+  - 사이트: https://naver-marketing-site.vercel.app · 관리자: https://naver-marketing-site.vercel.app/admin
+  - 저장소: https://github.com/sunhea0729-oss/naver-marketing-site (main에 푸시하면 자동 배포)
+  - 문의 표: Supabase `inquiries` (이름·연락처·가게 이름/업종·동의·상태), RLS 켜짐
+  - 사이트 이름은 임시로 "가게 마케팅" — 정해지면 index.html 로고·제목·바닥글을 바꾼다
 
 ## 13. 만드는 순서 (클로드가 처음부터 끝까지 한 번에)
 1. 스타일(색·글꼴)을 분위기에 맞게 정하고 첫 화면부터 만든다
