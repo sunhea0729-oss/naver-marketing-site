@@ -15,20 +15,6 @@
     setTimeout(tick, 2400);
   }
 
-  // 카카오톡 안내 창
-  const sheet = document.getElementById('kakao-sheet');
-  const msg = document.getElementById('copy-msg');
-  document.querySelectorAll('[data-kakao]').forEach((b) =>
-    b.addEventListener('click', () => { msg.textContent = ''; sheet.showModal(); })
-  );
-  sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); });
-  document.getElementById('to-form').addEventListener('click', () => sheet.close());
-  document.getElementById('copy-id').addEventListener('click', async () => {
-    const id = document.getElementById('kakao-id');
-    try { await navigator.clipboard.writeText(id.textContent.trim()); msg.textContent = 'ID를 복사했어요. 카카오톡에서 붙여 넣어 검색해 주세요.'; }
-    catch { const r = document.createRange(); r.selectNodeContents(id); const s = getSelection(); s.removeAllRanges(); s.addRange(r); msg.textContent = 'ID를 길게 눌러 복사해 주세요.'; }
-  });
-
   // 문의 폼
   const form = document.getElementById('inquiry-form');
   const out = document.getElementById('form-msg');
