@@ -101,6 +101,7 @@ button{font:inherit;cursor:pointer}
 .p-num b{font-family:var(--display);font-weight:400;font-size:clamp(72px,8vw,128px);line-height:.9;letter-spacing:-.04em;margin-right:4px}
 .p-num b.ask{font-size:clamp(40px,4vw,60px);line-height:1.05}
 .p-num small{font-size:16px;font-weight:600;margin-left:2px}
+.p-vat{font-size:13px;font-weight:600;margin-top:6px;opacity:.75}
 
 /* ---------- 진행 ---------- */
 .process{background:var(--white);padding:clamp(80px,10vw,140px) var(--pad);border-top:2px solid var(--black);border-bottom:2px solid var(--black)}
